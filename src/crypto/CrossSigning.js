@@ -20,9 +20,9 @@ limitations under the License.
  * @module crypto/CrossSigning
  */
 
-import {pkSign, pkVerify, encodeBase64, decodeBase64} from './olmlib';
+import {decodeBase64, encodeBase64, pkSign, pkVerify} from './olmlib';
 import {EventEmitter} from 'events';
-import logger from '../logger';
+import {logger} from '../logger';
 
 function publicKeyFromKeyInfo(keyInfo) {
     // `keys` is an object with { [`ed25519:${pubKey}`]: pubKey }
@@ -113,10 +113,10 @@ export class CrossSigningInfo extends EventEmitter {
      * @param {SecretStorage} secretStorage The secret store using account data
      * @returns {boolean} Whether all private keys were found in storage
      */
-    isStoredInSecretStorage(secretStorage) {
+    async isStoredInSecretStorage(secretStorage) {
         let stored = true;
         for (const type of ["master", "self_signing", "user_signing"]) {
-            stored &= secretStorage.isStored(`m.cross_signing.${type}`, false);
+            stored &= await secretStorage.isStored(`m.cross_signing.${type}`, false);
         }
         return stored;
     }
@@ -348,6 +348,7 @@ export class CrossSigningInfo extends EventEmitter {
 
     async signUser(key) {
         if (!this.keys.user_signing) {
+            logger.info("No user signing key: not signing user");
             return;
         }
         return this.signObject(key.keys.master, "user_signing");
@@ -360,6 +361,7 @@ export class CrossSigningInfo extends EventEmitter {
             );
         }
         if (!this.keys.self_signing) {
+            logger.info("No self signing key: not signing device");
             return;
         }
         return this.signObject(
